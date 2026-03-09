@@ -1,0 +1,7 @@
+[package]
+name = "rustmaps"
+version = "0.1.0"
+edition = "2021"
+description = "Pure Rust map tile renderer with zero dependencies"
+
+# No [dependencies] — pure std only
