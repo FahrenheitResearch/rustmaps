@@ -12,7 +12,7 @@ pub struct TileBounds {
 }
 
 /// Convert tile coordinates to lat/lon bounding box
-pub fn tile_to_latlon(z: u32, x: u32, y: u32) -> TileBounds {
+pub fn tile_to_latlon(z: u8, x: u32, y: u32) -> TileBounds {
     let n = (1u64 << z) as f64;
     let west = (x as f64) / n * 360.0 - 180.0;
     let east = (x as f64 + 1.0) / n * 360.0 - 180.0;
@@ -28,7 +28,7 @@ fn tile_y_to_lat(y: f64, n: f64) -> f64 {
 
 /// Convert lat/lon to pixel coordinates within a specific tile
 /// Returns (px, py) where 0..256 is within the tile
-pub fn latlon_to_pixel(lat: f64, lon: f64, z: u32, tile_x: u32, tile_y: u32) -> (f64, f64) {
+pub fn latlon_to_pixel(lat: f64, lon: f64, z: u8, tile_x: u32, tile_y: u32) -> (f64, f64) {
     let n = (1u64 << z) as f64;
     // World pixel coordinates
     let world_x = (lon + 180.0) / 360.0 * n;
@@ -46,21 +46,4 @@ pub fn point_in_tile(lat: f64, lon: f64, bounds: &TileBounds, margin_deg: f64) -
         && lat <= bounds.north + margin_deg
         && lon >= bounds.west - margin_deg
         && lon <= bounds.east + margin_deg
-}
-
-/// Check if a line segment between two points might intersect the tile bounds
-pub fn segment_intersects_tile(
-    lat1: f64, lon1: f64,
-    lat2: f64, lon2: f64,
-    bounds: &TileBounds,
-    margin_deg: f64,
-) -> bool {
-    let min_lat = lat1.min(lat2);
-    let max_lat = lat1.max(lat2);
-    let min_lon = lon1.min(lon2);
-    let max_lon = lon1.max(lon2);
-    !(max_lat < bounds.south - margin_deg
-        || min_lat > bounds.north + margin_deg
-        || max_lon < bounds.west - margin_deg
-        || min_lon > bounds.east + margin_deg)
 }

@@ -1,6 +1,5 @@
-//! Styling configuration: colors and line widths per zoom level.
+//! Dark theme styling for weather/radar map backgrounds.
 
-/// RGB color
 #[derive(Debug, Clone, Copy)]
 pub struct Color {
     pub r: u8,
@@ -9,10 +8,7 @@ pub struct Color {
 }
 
 impl Color {
-    pub const fn new(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b }
-    }
-
+    pub const fn new(r: u8, g: u8, b: u8) -> Self { Self { r, g, b } }
     pub const fn from_hex(hex: u32) -> Self {
         Self {
             r: ((hex >> 16) & 0xFF) as u8,
@@ -22,54 +18,67 @@ impl Color {
     }
 }
 
-// Dark theme colors to match NexView
-pub const COLOR_OCEAN: Color = Color::from_hex(0x1a1a2e);
-pub const COLOR_LAND: Color = Color::from_hex(0x16213e);
-pub const COLOR_COASTLINE: Color = Color::from_hex(0x4a90d9);
-pub const COLOR_COUNTRY_BORDER: Color = Color::from_hex(0x666680);
-pub const COLOR_STATE_BORDER: Color = Color::from_hex(0x444460);
-pub const COLOR_LAKE: Color = Color::from_hex(0x1a1a2e);
-pub const COLOR_RIVER: Color = Color::from_hex(0x3a6090);
-pub const COLOR_CITY_DOT: Color = Color::from_hex(0xffffff);
-pub const COLOR_CITY_LABEL: Color = Color::from_hex(0xcccccc);
-pub const COLOR_MAJOR_CITY_LABEL: Color = Color::from_hex(0xffffff);
+// Dark theme - optimized for radar/weather overlay visibility
+pub const COLOR_OCEAN: Color = Color::from_hex(0x0d1117);
+pub const COLOR_LAND: Color = Color::from_hex(0x161b22);
+pub const COLOR_COASTLINE: Color = Color::from_hex(0x4a8fd4);
+pub const COLOR_COUNTRY_BORDER: Color = Color::from_hex(0x7d8590);
+pub const COLOR_STATE_BORDER: Color = Color::from_hex(0x3d444d);
+pub const COLOR_LAKE: Color = Color::from_hex(0x0d1117);
+pub const COLOR_RIVER: Color = Color::from_hex(0x1a3a5c);
+pub const COLOR_CITY_DOT: Color = Color::from_hex(0xc9d1d9);
+pub const COLOR_CITY_LABEL: Color = Color::from_hex(0x8b949e);
+pub const COLOR_MAJOR_CITY_LABEL: Color = Color::from_hex(0xc9d1d9);
 
-/// Get coastline line width for a zoom level
-pub fn coastline_width(_z: u32) -> u32 {
-    1
-}
-
-/// Get border line width
-pub fn border_width(_z: u32) -> u32 {
-    1
-}
-
-/// Get river line width
-pub fn river_width(z: u32) -> u32 {
-    if z >= 8 { 2 } else { 1 }
-}
-
-/// Get city dot radius based on population tier
-pub fn city_dot_radius(tier: u8, z: u32) -> u32 {
-    match tier {
-        1 => if z >= 8 { 4 } else { 3 },
-        2 => if z >= 8 { 3 } else { 2 },
-        _ => 2,
+pub fn coastline_width(z: u8) -> f32 {
+    match z {
+        0..=2 => 0.8,
+        3..=4 => 1.0,
+        5..=6 => 1.3,
+        7..=8 => 1.6,
+        _ => 2.0,
     }
 }
 
-/// Whether to show a feature at the given zoom level
-pub fn show_state_borders(z: u32) -> bool { z >= 4 }
-pub fn show_lakes(z: u32) -> bool { z >= 4 }
-pub fn show_rivers(z: u32) -> bool { z >= 6 }
+pub fn border_width(z: u8) -> f32 {
+    match z {
+        0..=3 => 0.6,
+        4..=6 => 0.8,
+        7..=8 => 1.0,
+        _ => 1.3,
+    }
+}
 
-pub fn show_city_tier(tier: u8, z: u32) -> bool {
+pub fn river_width(z: u8) -> f32 {
+    match z {
+        0..=5 => 0.5,
+        6..=7 => 0.7,
+        _ => 1.0,
+    }
+}
+
+pub fn show_state_borders(z: u8) -> bool { z >= 2 }
+pub fn show_lakes(z: u8) -> bool { z >= 3 }
+pub fn show_rivers(z: u8) -> bool { z >= 6 }
+
+pub fn show_city_tier(tier: u8, z: u8) -> bool {
     match tier {
+        0 => z >= 3,
         1 => z >= 4,
         2 => z >= 6,
         3 => z >= 8,
-        _ => z >= 10,
+        _ => false,
     }
 }
 
-pub fn show_city_labels(z: u32) -> bool { z >= 5 }
+pub fn show_city_labels(z: u8) -> bool { z >= 5 }
+
+pub fn city_dot_radius(tier: u8, z: u8) -> f32 {
+    let base = match tier {
+        0 => 3.0,
+        1 => 2.5,
+        2 => 2.0,
+        _ => 1.5,
+    };
+    base + (z as f32 - 5.0).max(0.0) * 0.3
+}

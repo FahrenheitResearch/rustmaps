@@ -1,7 +1,27 @@
 [package]
 name = "rustmaps"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Pure Rust map tile renderer with zero dependencies"
+description = "Fast dark-theme map tile renderer for weather/radar backgrounds"
 
-# No [dependencies] — pure std only
+[dependencies]
+shapefile = "0.6"
+rayon = "1"
+png = "0.17"
+eframe = "0.31"
+egui = "0.31"
+image = { version = "0.25", default-features = false, features = ["png"] }
+rfd = "0.15"
+
+[[bin]]
+name = "rustmaps"
+path = "src/gui.rs"
+
+[[bin]]
+name = "rustmaps-cli"
+path = "src/cli.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

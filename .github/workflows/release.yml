@@ -1,0 +1,194 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release
+      - name: Package
+        run: |
+          mkdir dist
+          cp target/release/rustmaps.exe dist/
+          cp target/release/rustmaps-cli.exe dist/
+          cd dist && 7z a ../rustmaps-Windows-x64.zip rustmaps.exe rustmaps-cli.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: rustmaps-Windows-x64.zip
+
+  build-macos-intel:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --target x86_64-apple-darwin
+      - name: Create App Bundle
+        run: |
+          mkdir -p "rustmaps.app/Contents/MacOS"
+          mkdir -p "rustmaps.app/Contents/Resources"
+          cp target/x86_64-apple-darwin/release/rustmaps "rustmaps.app/Contents/MacOS/"
+          cp target/x86_64-apple-darwin/release/rustmaps-cli "rustmaps.app/Contents/MacOS/"
+          cat > "rustmaps.app/Contents/Info.plist" << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>rustmaps</string>
+            <key>CFBundleDisplayName</key>
+            <string>rustmaps</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.fahrenheitresearch.rustmaps</string>
+            <key>CFBundleVersion</key>
+            <string>0.2.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>0.2.0</string>
+            <key>CFBundleExecutable</key>
+            <string>rustmaps</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.15</string>
+          </dict>
+          </plist>
+          PLIST
+      - name: Sign App Bundle
+        run: codesign --force --deep -s - "rustmaps.app"
+      - name: Package DMG
+        run: |
+          hdiutil create -volname "rustmaps" -srcfolder "rustmaps.app" -ov -format UDZO rustmaps-macOS-Intel.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-intel-build
+          path: rustmaps-macOS-Intel.dmg
+
+  build-macos-arm:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release
+      - name: Create App Bundle
+        run: |
+          mkdir -p "rustmaps.app/Contents/MacOS"
+          mkdir -p "rustmaps.app/Contents/Resources"
+          cp target/release/rustmaps "rustmaps.app/Contents/MacOS/"
+          cp target/release/rustmaps-cli "rustmaps.app/Contents/MacOS/"
+          cat > "rustmaps.app/Contents/Info.plist" << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>rustmaps</string>
+            <key>CFBundleDisplayName</key>
+            <string>rustmaps</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.fahrenheitresearch.rustmaps</string>
+            <key>CFBundleVersion</key>
+            <string>0.2.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>0.2.0</string>
+            <key>CFBundleExecutable</key>
+            <string>rustmaps</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+            <key>LSMinimumSystemVersion</key>
+            <string>11.0</string>
+          </dict>
+          </plist>
+          PLIST
+      - name: Sign App Bundle
+        run: codesign --force --deep -s - "rustmaps.app"
+      - name: Package DMG
+        run: |
+          hdiutil create -volname "rustmaps" -srcfolder "rustmaps.app" -ov -format UDZO rustmaps-macOS-AppleSilicon.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm-build
+          path: rustmaps-macOS-AppleSilicon.dmg
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+      - name: Build
+        run: cargo build --release
+      - name: Package
+        run: |
+          mkdir dist
+          cp target/release/rustmaps dist/
+          cp target/release/rustmaps-cli dist/
+          cd dist && tar czf ../rustmaps-Linux-x64.tar.gz rustmaps rustmaps-cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: rustmaps-Linux-x64.tar.gz
+
+  create-release:
+    needs: [build-windows, build-macos-intel, build-macos-arm, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## rustmaps ${{ github.ref_name }}
+
+            Dark-theme map tile renderer for weather/radar backgrounds.
+
+            ### Binaries
+            - `rustmaps` - GUI map viewer (pan/zoom, export tiles)
+            - `rustmaps-cli` - CLI for batch tile generation and tile server
+
+            ### Note
+            Natural Earth shapefiles (~95MB) are required for rendering.
+            Download from https://www.naturalearthdata.com/ and place in a `data` folder next to the binary.
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | Windows x64 | `rustmaps-Windows-x64.zip` |
+            | macOS Apple Silicon | `rustmaps-macOS-AppleSilicon.dmg` |
+            | macOS Intel | `rustmaps-macOS-Intel.dmg` |
+            | Linux x64 | `rustmaps-Linux-x64.tar.gz` |
+          files: |
+            artifacts/windows-build/rustmaps-Windows-x64.zip
+            artifacts/macos-intel-build/rustmaps-macOS-Intel.dmg
+            artifacts/macos-arm-build/rustmaps-macOS-AppleSilicon.dmg
+            artifacts/linux-build/rustmaps-Linux-x64.tar.gz
